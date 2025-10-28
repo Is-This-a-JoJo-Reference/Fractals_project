@@ -14,11 +14,18 @@
 using namespace std;
 
 enum FractalType {
-	MANDELBROT,		// 0
-	JULIA,			// 1
-	BURNING_SHIP,	// 2
-	NEWTON_BASINS,	// 3
-	FRACTAL_COUNT	// 4
+	MANDELBROT,
+	MANDELBROT_SIN,
+	MANDELBROT_INV,
+	TRICORN,
+	JULIA,
+	BURNING_SHIP,
+	CELTIC,
+	BUFFALO,
+	NEWTON_1,
+	NEWTON_2,
+	NEWTON_3,
+	FRACTAL_COUNT
 };
 
 enum ColorPalette {
@@ -55,9 +62,11 @@ private:
 	int width, height;			// Height and width of the terminal in symbols
 	int maxiter;				// Maximum number of iterations
 	bool running;				// Breaking the while cycle in main()
-	const char* fractalNamesSpaces[FRACTAL_COUNT] = {"Mandelbrot   ", "Julia        ", "Burning Ship ", "Newton Basins"};
-	const char* fractalNamesUnderscore[FRACTAL_COUNT] = {"Mandelbrot", "Julia", "Burning_Ship", "Newton_Basins"};
-	const char* fractalNames[FRACTAL_COUNT] = {"Mandelbrot", "Julia", "Burning Ship", "Newton Basins"};
+	const char* fractalNamesSpaces[FRACTAL_COUNT] = {"Mandelbrot          ", "Mandelbrot Sin      ", "Inverted Mandelbrot ", "Tricorn             ", 
+													"Julia               ", "Burning Ship        ", "Celtic              ", "Buffalo             ", 
+													"Newton z^3 - 1      ", "Newton z^3 - 2z + 2 ", "Newton z^5 + z^2 - 1"};
+	const char* fractalNamesUnderscore[FRACTAL_COUNT] = {"Mandelbrot", "Mandelbrot_Sin", "Inverted_Mandelbrot", "Tricorn", "Julia", "Burning_Ship", "Celtic", "Buffalo", "Newton_z^3-1", "Newton_z^3-2z+2", "Newton_z^5+z^2-1"};
+	const char* fractalNames[FRACTAL_COUNT] = {"Mandelbrot", "Mandelbrot Sin", "Inverted Mandelbrot", "Tricorn", "Julia", "Burning Ship", "Celtic", "Buffalo", "Newton z^3 - 1", "Newton z^3 - 2z + 2", "Newton z^5 + z^2 - 1"};
 	const char* paletteNames[PALETTE_COUNT] = {"Grayscale", "Fire", "Ocean", "Forest"};
 	vector<int> compressionParams;
 
@@ -66,6 +75,18 @@ public:
 		fractalSettings[MANDELBROT].centerX = -0.5;
 		fractalSettings[MANDELBROT].centerY = 0.0;
 		fractalSettings[MANDELBROT].scale = 0.015;
+
+		fractalSettings[MANDELBROT_SIN].centerX = 0.0;
+		fractalSettings[MANDELBROT_SIN].centerY = 0.0;
+		fractalSettings[MANDELBROT_SIN].scale = 0.05;
+
+		fractalSettings[MANDELBROT_INV].centerX = 0.8;
+		fractalSettings[MANDELBROT_INV].centerY = 0.0;
+		fractalSettings[MANDELBROT_INV].scale = 0.025;
+
+		fractalSettings[TRICORN].centerX = 0.0;
+		fractalSettings[TRICORN].centerY = 0.0;
+		fractalSettings[TRICORN].scale = 0.02;
 
 		fractalSettings[JULIA].centerX = 0.0;
 		fractalSettings[JULIA].centerY = 0.0;
@@ -77,16 +98,32 @@ public:
 		fractalSettings[BURNING_SHIP].centerY = -0.5;
 		fractalSettings[BURNING_SHIP].scale = 0.02;
 
-		fractalSettings[NEWTON_BASINS].centerX = 0.0;
-		fractalSettings[NEWTON_BASINS].centerY = 0.0;
-		fractalSettings[NEWTON_BASINS].scale = 0.02;
+		fractalSettings[CELTIC].centerX = -0.6;
+		fractalSettings[CELTIC].centerY = -0.0;
+		fractalSettings[CELTIC].scale = 0.02;
+
+		fractalSettings[BUFFALO].centerX = -0.5;
+		fractalSettings[BUFFALO].centerY = -0.5;
+		fractalSettings[BUFFALO].scale = 0.02;
+
+		fractalSettings[NEWTON_1].centerX = 0.0;
+		fractalSettings[NEWTON_1].centerY = 0.0;
+		fractalSettings[NEWTON_1].scale = 0.02;
+
+		fractalSettings[NEWTON_2].centerX = 0.0;
+		fractalSettings[NEWTON_2].centerY = 0.0;
+		fractalSettings[NEWTON_2].scale = 0.01;
+
+		fractalSettings[NEWTON_3].centerX = 0.0;
+		fractalSettings[NEWTON_3].centerY = 0.0;
+		fractalSettings[NEWTON_3].scale = 0.02;
 
 		updateScales();
 		
 		compressionParams.push_back(cv::IMWRITE_PNG_COMPRESSION);
 		compressionParams.push_back(8);
 		compressionParams.push_back(cv::IMWRITE_PNG_STRATEGY);
-		compressionParams.push_back(cv::IMWRITE_PNG_STRATEGY_RLE); // Хорошо для фракталов
+		compressionParams.push_back(cv::IMWRITE_PNG_STRATEGY_RLE);
 		compressionParams.push_back(cv::IMWRITE_PNG_BILEVEL);
 		compressionParams.push_back(0);
 	}
@@ -105,10 +142,12 @@ public:
 		curs_set(0);			// Hide the cursor
 		start_color();  // Включить поддержку цветов
 		use_default_colors();  // Использовать цвета по умолчанию
-		init_pair(0, COLOR_BLACK, COLOR_BLACK);
+		init_pair(0, COLOR_WHITE, COLOR_BLACK);
 		init_pair(1, COLOR_RED, COLOR_RED);
 		init_pair(2, COLOR_GREEN, COLOR_GREEN);
 		init_pair(3, COLOR_BLUE, COLOR_BLUE);
+		init_pair(4, COLOR_YELLOW, COLOR_YELLOW);
+		init_pair(5, COLOR_CYAN, COLOR_CYAN);
 		getmaxyx(stdscr, height, width);	// Get terminal dimensions
     
 	}
@@ -174,7 +213,7 @@ public:
 			mvprintw(startY + FRACTAL_COUNT+1, startX-10, "In menu:");
 			attroff(A_BOLD);
 			mvprintw(startY + FRACTAL_COUNT+2, startX-10, "Arrows - navigate    Enter - confirm");
-			mvprintw(startY + FRACTAL_COUNT+3, startX-10, "1-%d - quick select   q - exit program", FRACTAL_COUNT);
+			mvprintw(startY + FRACTAL_COUNT+3, startX-10, "q - exit program", FRACTAL_COUNT);
 
 			attron(A_BOLD);
 			mvprintw(startY + FRACTAL_COUNT+5, startX-10, "In fractal viewer:");
@@ -183,6 +222,7 @@ public:
 			mvprintw(startY + FRACTAL_COUNT+7, startX-10, "WASD - fast move     Arrows - precise move");
 			mvprintw(startY + FRACTAL_COUNT+8, startX-10, "m - back to menu     r - change aspect ratio");
 			mvprintw(startY + FRACTAL_COUNT+9, startX-10, "q - exit program     c - change Julia parameters");
+			mvprintw(startY + FRACTAL_COUNT+10, startX-10,"Shift+s - save to .PNG");
 
 			refresh();
 
@@ -197,14 +237,6 @@ public:
 						selected = static_cast<FractalType>((selected + 1) % FRACTAL_COUNT); break;
 					case 10: case 13:
 						currentFractal = selected; menuActive = false; break;
-					case '1':
-						currentFractal = MANDELBROT; menuActive = false; break;
-					case '2':
-						currentFractal = JULIA; menuActive = false; break;
-					case '3':
-						currentFractal = BURNING_SHIP; menuActive = false; break;
-					case '4':
-						currentFractal = NEWTON_BASINS; menuActive = false; break;
 					case 'q':
 						running = false; menuActive = false; break;
 					case KEY_RESIZE:
@@ -244,6 +276,43 @@ public:
 		return iteration;
 	}
 
+	int mandelbrotSinPoint(double cx, double cy) {
+		double zx = 0., zy = 0., zx2 = 0., zy2 = 0., new_zx;
+		const double ESCAPE_RADIUS_SQUARED = 4e2;
+
+		int iteration = 0;
+		while (zx2 + zy2 < ESCAPE_RADIUS_SQUARED && iteration < maxiter) {
+			new_zx = sin(zx) * cosh(zy) + cx;
+			zy = cos(zx) * sinh(zy) + cy;
+			zx = new_zx;
+			zx2 = zx*zx; zy2 = zy*zy;
+			++iteration;
+		}
+		return iteration;
+	}
+
+	int mandelbrotInvPoint(double cx, double cy) {
+		double r = sqrt(cx*cx + cy*cy);
+		if (r < 1e-10) return maxiter;
+
+		double inv_cx = cx / (r * r);
+		double inv_cy = -cy / (r * r);
+		return mandelbrotPoint(inv_cx, inv_cy);
+	}
+
+	int tricornPoint(double cx, double cy) {
+		double zx = 0., zy = 0., zx2 = 0., zy2 = 0.; // Re and Im parts and their squares
+
+		int iteration = 0;
+		while (zx2 + zy2 < 4. && iteration < maxiter) {
+			zy = -2.0*zx*zy + cy;
+			zx = zx2 - zy2 + cx;
+			zx2 = zx*zx; zy2 = zy*zy;
+			++iteration;
+		}
+		return iteration;
+	}
+
 	int juliaPoint(double zx, double zy) {
 		double cx = fractalSettings[JULIA].juliaCx, cy = fractalSettings[JULIA].juliaCy;
 		double zx2 = zx*zx, zy2 = zy*zy;
@@ -271,14 +340,40 @@ public:
 		return iteration;
 	}
 
-	int newtonBasinsPoint(double zx, double zy){
-		double roots[6] = { // of y = x^3 - 1
+	int celticPoint(double cx, double cy) {
+		double zx = 0., zy = 0., zx2 = 0., zy2 = 0.;
+		int iteration = 0;
+
+		while (zx2 + zy2 < 4.0 && iteration < maxiter) {
+			zy = 2*zx*zy + cy;
+			zx = fabs(zx2 - zy2) + cx;
+			zx2 = zx*zx; zy2 = zy*zy;
+			++iteration;
+		}
+		return iteration;
+	}
+
+	int buffaloPoint(double cx, double cy) {
+		double zx = 0., zy = 0., zx2 = 0., zy2 = 0.;
+		int iteration = 0;
+
+		while (zx2 + zy2 < 4.0 && iteration < maxiter) {
+			zy = 2*fabs(zx*zy) + cy;
+			zx = fabs(zx2 - zy2) + cx;
+			zx2 = zx*zx; zy2 = zy*zy;
+			++iteration;
+		}
+		return iteration;
+	}
+
+	int newton1Point(double zx, double zy) {
+		double roots[6] = { // of f(z) = z^3 - 1
 			1.0, 0.0,
 			-0.5, sqrt(3.)/2,
 			-0.5, -sqrt(3.)/2
 		};
 
-		double tolerance = 1e-4;
+		double tolerance = 1e-6;
 		int max_newton_iter = 50;
 
 		double x2, y2, xy, fx, fy, fpx, fpy, denom, dx_root, dy_root;
@@ -312,8 +407,95 @@ public:
 		return 0;
 	}
 
+	int newton2Point(double zx, double zy){
+		double roots[6] = { // of f(z) = z^3 - 2z + 2
+			-1.76929235423863, 0.0,
+			0.884646177119316, 0.589742805022206,
+			0.884646177119316, -0.589742805022206			
+		};
+
+		double tolerance = 1e-6;
+		int max_newton_iter = 50;
+
+		double x2, y2, xy, fx, fy, fpx, fpy, denom, dx_root, dy_root;
+		int j;
+
+		for (int i = 0; i < max_newton_iter; ++i) {
+			x2 = zx * zx;
+			y2 = zy * zy;
+			xy = zx * zy;
+
+			fx = zx * (x2 - 3*y2 - 2) + 2;
+			fy = zy * (3*x2 - y2 - 2);
+
+			fpx = 3 * (x2 - y2) - 2;
+			fpy = 6 * xy;
+
+			denom = fpx * fpx + fpy * fpy;
+			if (denom == 0) break;
+
+			zx -= (fx * fpx + fy * fpy) / denom;
+			zy -= (fy * fpx - fx * fpy) / denom;
+
+			for (j = 0; j < 3; ++j) {
+				dx_root = zx - roots[2*j];
+				dy_root = zy - roots[2*j+1];
+				if (dx_root * dx_root + dy_root * dy_root < tolerance * tolerance) {
+					return j + 1;
+				}
+			}
+		}
+		return 0;
+	}
+
+	int newton3Point(double zx, double zy){
+		double roots[10] = { // of y = z^5 + z^2 - 1
+			0.808730600479392, 0.0,
+			0.464912201602898, 1.07147384027027,
+			0.464912201602898, -1.07147384027027,
+			-0.869277501842594, 0.38826940659974,
+			-0.869277501842594, -0.38826940659974
+		};
+
+		double tolerance = 1e-6;
+		int max_newton_iter = 50;
+
+		double x2, y2, xy, x4, y4, x2y2, fx, fy, fpx, fpy, denom, dx_root, dy_root;
+		int j;
+
+		for (int i = 0; i < max_newton_iter; ++i) {
+			x2 = zx * zx;
+			y2 = zy * zy;
+			xy = zx * zy;
+			x4 = x2 * x2;
+			y4 = y2 * y2;
+			x2y2 = xy * xy;
+
+			fx = zx * (x4 - 10*x2y2 + 5*y4) + x2 - y2 - 1;
+			fy = zy * (5*x4 - 10*x2y2 + y4) + 2*xy;
+
+			fpx = 5*x4 - 30*x2y2 + 5*y4 + 2*zx;
+			fpy = 20 * xy * (x2 - y2) + 2*zy;
+
+			denom = fpx * fpx + fpy * fpy;
+			if (denom == 0) break;
+
+			zx -= (fx * fpx + fy * fpy) / denom;
+			zy -= (fy * fpx - fx * fpy) / denom;
+
+			for (j = 0; j < 5; ++j) {
+				dx_root = zx - roots[2*j];
+				dy_root = zy - roots[2*j+1];
+				if (dx_root * dx_root + dy_root * dy_root < tolerance * tolerance) {
+					return j + 1;
+				}
+			}
+		}
+		return 0;
+	}
+
 	void renderNewtonBasins() {
-		FractalSettings& settings = fractalSettings[NEWTON_BASINS];
+		FractalSettings& settings = fractalSettings[currentFractal];
 		updateScales();
 		double cx, cy;
 		int color;
@@ -322,7 +504,12 @@ public:
 				cx = (x - width/2.) * scaleX + settings.centerX;	// X coordinate of the point
 				cy = (y - height/2.) * scaleY + settings.centerY;	// Y coordinate of the point
 
-				color = newtonBasinsPoint(cx, cy);
+				switch (currentFractal) {
+					case NEWTON_1: color = newton1Point(cx, cy); break;
+					case NEWTON_2: color = newton2Point(cx, cy); break;
+					case NEWTON_3: color = newton3Point(cx, cy); break;
+				}
+
 				attron(COLOR_PAIR(color));
 				mvaddch(y, x, '@');
 				attroff(COLOR_PAIR(color));
@@ -343,8 +530,13 @@ public:
 
 				switch (currentFractal) {
 					case MANDELBROT: 	iteration = mandelbrotPoint(cx, cy); break;
+					case MANDELBROT_SIN:iteration = mandelbrotSinPoint(cx, cy); break;
+					case MANDELBROT_INV:iteration = mandelbrotInvPoint(cx, cy); break;
+					case TRICORN:		iteration = tricornPoint(cx, cy); break;
 					case JULIA:			iteration = juliaPoint(cx, cy); break;
 					case BURNING_SHIP:	iteration = burningShipPoint(cx, cy); break;
+					case CELTIC:		iteration = celticPoint(cx, cy); break;
+					case BUFFALO:		iteration = buffaloPoint(cx, cy); break;
 				}
 				
 				pixel = getPixelChar(iteration);
@@ -403,8 +595,13 @@ public:
 
 				switch (currentFractal) {
 					case MANDELBROT:	iteration = mandelbrotPoint(cx, cy); break;
+					case MANDELBROT_SIN:iteration = mandelbrotSinPoint(cx, cy); break;
+					case MANDELBROT_INV:iteration = mandelbrotInvPoint(cx, cy); break;
+					case TRICORN:		iteration = tricornPoint(cx, cy); break;
 					case JULIA:			iteration = juliaPoint(cx, cy); break;
 					case BURNING_SHIP:	iteration = burningShipPoint(cx, cy); break;
+					case CELTIC:		iteration = celticPoint(cx, cy); break;
+					case BUFFALO:		iteration = buffaloPoint(cx, cy); break;
 				}
 
 				color = getPixelColor(iteration);
@@ -415,9 +612,9 @@ public:
 	}
 
 	void saveNewtonBasins(int imageHeight, int imageWidth, string filename) {
-		FractalSettings& settings = fractalSettings[NEWTON_BASINS];
+		FractalSettings& settings = fractalSettings[currentFractal];
 		cv::Mat image(imageHeight, imageWidth, CV_8UC3);
-		int color, colors[12] = {38, 84, 124, 239, 71, 111, 255, 209, 102, 6, 214, 160}; // 4 colors in RGB
+		int color, colors[18] = {205, 0, 126, 239, 106, 0, 242, 205, 0, 121, 195, 0, 25, 97, 174, 97, 0, 125}; // 6 colors in RGB
 		double cx, cy;
 
 		for (int y = 0; y < imageHeight; ++y) {
@@ -425,8 +622,12 @@ public:
 				cx = (static_cast<double>(x) / imageWidth - 0.5) * width * settings.scale + settings.centerX;
 				cy = (static_cast<double>(y) / imageHeight - 0.5) * width * imageHeight / imageWidth * settings.scale + settings.centerY;
 
-				color = newtonBasinsPoint(cx, cy);
-				if (color >= 0 && color < 4)
+				switch (currentFractal) {
+					case NEWTON_1: color = newton1Point(cx, cy); break;
+					case NEWTON_2: color = newton2Point(cx, cy); break;
+					case NEWTON_3: color = newton3Point(cx, cy); break;
+				}
+				if (color >= 0 && color < 6)
 					image.at<cv::Vec3b>(y, x) = cv::Vec3b(colors[3*color + 2], colors[3*color + 1], colors[3*color]); // Saving in BGR
 				else
 					image.at<cv::Vec3b>(y, x) = cv::Vec3b(0, 0, 0);
@@ -465,7 +666,7 @@ public:
 		imageHeight = atoi(input);
 		noecho();
 
-		while(selectActive && (currentFractal != NEWTON_BASINS)) {
+		while(selectActive && currentFractal != NEWTON_1 && currentFractal != NEWTON_2 && currentFractal != NEWTON_3) {
 			clear();
 			mvprintw(0, 0, "FIlename is generated automatically. Enter width and height of the output image");
 			mvprintw(1, 0, "Enter width: %d", imageWidth);
@@ -515,7 +716,7 @@ public:
 			string filename = "./PNG_output/" + string(fractalNamesUnderscore[currentFractal]) + "_" + currentDateTime() + ".png";
 
 			switch (currentFractal) {
-				case NEWTON_BASINS: saveNewtonBasins(imageHeight, imageWidth, filename); break;
+				case NEWTON_1: case NEWTON_2: case NEWTON_3: saveNewtonBasins(imageHeight, imageWidth, filename); break;
 				default: saveOtherFractals(imageHeight, imageWidth, filename);
 			}
 			mvprintw(9 + PALETTE_COUNT, 0, "%s successfully saved. Press any button", filename.c_str());
@@ -526,7 +727,7 @@ public:
 	void showFractalInfo() {
 		FractalSettings& settings = fractalSettings[currentFractal];
 		attron(A_REVERSE);
-		mvprintw(0, 0, "Fractal: %s | Scale: %.2e | Center coordinates: (%+.7e, %+.7e)       ", fractalNamesSpaces[currentFractal], settings.scale, settings.centerX, settings.centerY);
+		mvprintw(0, 0, "Fractal: %s | Scale: %.2e | Center coordinates: (%+.7e, %+.7e)", fractalNamesSpaces[currentFractal], settings.scale, settings.centerX, settings.centerY);
 		mvprintw(1, 0, "Terminal dimensions: %4d x %4d | Aspect ratio: %.2f | q - quit | m - menu | r - change aspect ratio ", width, height, aspectRatio);
 		if (currentFractal == JULIA) 
 			mvprintw(2, 0, "Julia parameter: c = (%+.2f, %+.2f) | c - change Julia parameter                                      ", settings.juliaCx, settings.juliaCy);
@@ -565,7 +766,7 @@ public:
 			clear();
 
 			switch (currentFractal) {
-				case NEWTON_BASINS: renderNewtonBasins(); break;
+				case NEWTON_1: case NEWTON_2: case NEWTON_3: renderNewtonBasins(); break;
 				default: renderOtherFractals();
 			}
 			showFractalInfo();
